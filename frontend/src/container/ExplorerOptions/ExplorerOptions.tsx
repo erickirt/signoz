@@ -25,7 +25,10 @@ import { PANEL_TYPES } from 'constants/queryBuilder';
 import ROUTES from 'constants/routes';
 import ExportPanelContainer from 'container/ExportPanel/ExportPanelContainer';
 import { useOptionsMenu } from 'container/OptionsMenu';
-import { defaultTraceSelectedColumns } from 'container/OptionsMenu/constants';
+import {
+	defaultLogsSelectedColumns,
+	defaultTraceSelectedColumns,
+} from 'container/OptionsMenu/constants';
 import { OptionsQuery } from 'container/OptionsMenu/types';
 import { useGetSearchQueryParam } from 'hooks/queryBuilder/useGetSearchQueryParam';
 import { useQueryBuilder } from 'hooks/queryBuilder/useQueryBuilder';
@@ -37,7 +40,7 @@ import useErrorNotification from 'hooks/useErrorNotification';
 import { useHandleExplorerTabChange } from 'hooks/useHandleExplorerTabChange';
 import { useNotifications } from 'hooks/useNotifications';
 import { mapCompositeQueryFromQuery } from 'lib/newQueryBuilder/queryBuilderMappers/mapCompositeQueryFromQuery';
-import { cloneDeep, isEqual } from 'lodash-es';
+import { cloneDeep, isEqual, omit } from 'lodash-es';
 import {
 	Check,
 	ConciergeBell,
@@ -209,13 +212,46 @@ function ExplorerOptions({
 		0.08,
 	);
 
+	const { options, handleOptionsChange } = useOptionsMenu({
+		storageKey:
+			sourcepage === DataSource.TRACES
+				? LOCALSTORAGE.TRACES_LIST_OPTIONS
+				: LOCALSTORAGE.LOGS_LIST_OPTIONS,
+		dataSource: sourcepage,
+		aggregateOperator: StringOperators.NOOP,
+	});
+
+	const getUpdatedExtraData = (
+		extraData: string | undefined,
+		newSelectedColumns: BaseAutocompleteData[],
+	): string => {
+		let updatedExtraData;
+
+		if (extraData) {
+			const parsedExtraData = JSON.parse(extraData);
+			parsedExtraData.selectColumns = newSelectedColumns;
+			updatedExtraData = JSON.stringify(parsedExtraData);
+		} else {
+			updatedExtraData = JSON.stringify({
+				color: Color.BG_SIENNA_500,
+				selectColumns: newSelectedColumns,
+			});
+		}
+		return updatedExtraData;
+	};
+
+	const updatedExtraData = getUpdatedExtraData(
+		extraData,
+		options?.selectColumns,
+	);
+
 	const {
 		mutateAsync: updateViewAsync,
 		isLoading: isViewUpdating,
 	} = useUpdateView({
 		compositeQuery,
 		viewKey,
-		extraData: extraData || JSON.stringify({ color: Color.BG_SIENNA_500 }),
+		extraData: updatedExtraData,
 		sourcePage: sourcepage,
 		viewName,
 	});
@@ -227,13 +263,11 @@ function ExplorerOptions({
 	};
 
 	const onUpdateQueryHandler = (): void => {
-		const extraData = viewsData?.data?.data?.find((view) => view.uuid === viewKey)
-			?.extraData;
 		updateViewAsync(
 			{
 				compositeQuery: mapCompositeQueryFromQuery(currentQuery, panelType),
 				viewKey,
-				extraData: extraData || JSON.stringify({ color: Color.BG_SIENNA_500 }),
+				extraData: updatedExtraData,
 				sourcePage: sourcepage,
 				viewName,
 			},
@@ -255,14 +289,9 @@ function ExplorerOptions({
 
 	const { handleExplorerTabChange } = useHandleExplorerTabChange();
 
-	const { options, handleOptionsChange } = useOptionsMenu({
-		storageKey: LOCALSTORAGE.TRACES_LIST_OPTIONS,
-		dataSource: DataSource.TRACES,
-		aggregateOperator: StringOperators.NOOP,
-	});
-
 	type ExtraData = {
 		selectColumns?: BaseAutocompleteData[];
+		version?: number;
 	};
 
 	const updateOrRestoreSelectColumns = (
@@ -283,14 +312,20 @@ function ExplorerOptions({
 			console.error('Error parsing extraData:', error);
 		}
 
+		let backwardCompatibleOptions = options;
+
+		if (!extraData?.version) {
+			backwardCompatibleOptions = omit(options, 'version');
+		}
+
 		if (extraData.selectColumns?.length) {
 			handleOptionsChange({
-				...options,
+				...backwardCompatibleOptions,
 				selectColumns: extraData.selectColumns,
 			});
 		} else if (!isEqual(defaultTraceSelectedColumns, options.selectColumns)) {
 			handleOptionsChange({
-				...options,
+				...backwardCompatibleOptions,
 				selectColumns: defaultTraceSelectedColumns,
 			});
 		}
@@ -398,10 +433,22 @@ function ExplorerOptions({
 	const handleClearSelect = (): void => {
 		removeCurrentViewFromLocalStorage();
 
+		handleOptionsChange({
+			...options,
+			selectColumns:
+				sourcepage === DataSource.TRACES
+					? defaultTraceSelectedColumns
+					: defaultLogsSelectedColumns,
+		});
+
 		history.replace(DATASOURCE_VS_ROUTES[sourcepage]);
 	};
 
-	const isQueryUpdated = isStagedQueryUpdated(viewsData?.data?.data, viewKey);
+	const isQueryUpdated = isStagedQueryUpdated(
+		viewsData?.data?.data,
+		viewKey,
+		options,
+	);
 
 	const {
 		isLoading: isSaveViewLoading,
@@ -423,6 +470,7 @@ function ExplorerOptions({
 			extraData: JSON.stringify({
 				color,
 				selectColumns: options.selectColumns,
+				version: 1,
 			}),
 			notifications,
 			panelType: panelType || PANEL_TYPES.LIST,

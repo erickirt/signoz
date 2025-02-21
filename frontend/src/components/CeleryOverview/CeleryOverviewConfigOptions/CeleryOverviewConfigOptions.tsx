@@ -1,7 +1,6 @@
 import './CeleryOverviewConfigOptions.styles.scss';
 
-import { Color } from '@signozhq/design-tokens';
-import { Button, Select, Spin, Tooltip } from 'antd';
+import { Row, Select, Spin } from 'antd';
 import {
 	getValuesFromQueryParams,
 	setQueryParamsFromOptions,
@@ -10,15 +9,12 @@ import { useCeleryFilterOptions } from 'components/CeleryTask/useCeleryFilterOpt
 import { SelectMaxTagPlaceholder } from 'components/MessagingQueues/MQCommon/MQCommon';
 import { QueryParams } from 'constants/query';
 import useUrlQuery from 'hooks/useUrlQuery';
-import { Check, Share2 } from 'lucide-react';
-import { useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { useCopyToClipboard } from 'react-use';
 
 interface SelectOptionConfig {
 	placeholder: string;
 	queryParam: QueryParams;
-	filterType: 'serviceName' | 'spanName' | 'msgSystem';
+	filterType: string | string[];
 }
 
 function FilterSelect({
@@ -29,13 +25,14 @@ function FilterSelect({
 	const { handleSearch, isFetching, options } = useCeleryFilterOptions(
 		filterType,
 	);
+
 	const urlQuery = useUrlQuery();
 	const history = useHistory();
 	const location = useLocation();
 
 	return (
 		<Select
-			key={filterType}
+			key={filterType.toString()}
 			placeholder={placeholder}
 			showSearch
 			mode="multiple"
@@ -44,6 +41,7 @@ function FilterSelect({
 			className="config-select-option"
 			onSearch={handleSearch}
 			maxTagCount={4}
+			allowClear
 			maxTagPlaceholder={SelectMaxTagPlaceholder}
 			value={getValuesFromQueryParams(queryParam, urlQuery) || []}
 			notFoundContent={
@@ -64,61 +62,46 @@ function FilterSelect({
 }
 
 function CeleryOverviewConfigOptions(): JSX.Element {
-	const [isURLCopied, setIsURLCopied] = useState(false);
-
-	const [, handleCopyToClipboard] = useCopyToClipboard();
-
 	const selectConfigs: SelectOptionConfig[] = [
 		{
 			placeholder: 'Service Name',
 			queryParam: QueryParams.service,
 			filterType: 'serviceName',
 		},
-		// {
-		// 	placeholder: 'Span Name',
-		// 	queryParam: QueryParams.spanName,
-		// 	filterType: 'spanName',
-		// },
-		// {
-		// 	placeholder: 'Msg System',
-		// 	queryParam: QueryParams.msgSystem,
-		// 	filterType: 'msgSystem',
-		// },
+		{
+			placeholder: 'Span Name',
+			queryParam: QueryParams.spanName,
+			filterType: 'name',
+		},
+		{
+			placeholder: 'Msg System',
+			queryParam: QueryParams.msgSystem,
+			filterType: 'messaging.system',
+		},
+		{
+			placeholder: 'Destination',
+			queryParam: QueryParams.destination,
+			filterType: ['messaging.destination.name', 'messaging.destination'],
+		},
+		{
+			placeholder: 'Kind',
+			queryParam: QueryParams.kindString,
+			filterType: 'kind_string',
+		},
 	];
-
-	const handleShareURL = (): void => {
-		handleCopyToClipboard(window.location.href);
-		setIsURLCopied(true);
-		setTimeout(() => {
-			setIsURLCopied(false);
-		}, 1000);
-	};
 
 	return (
 		<div className="celery-overview-filters">
-			<div className="celery-filters">
+			<Row className="celery-filters">
 				{selectConfigs.map((config) => (
 					<FilterSelect
-						key={config.filterType}
+						key={config.filterType.toString()}
 						placeholder={config.placeholder}
 						queryParam={config.queryParam}
 						filterType={config.filterType}
 					/>
 				))}
-			</div>
-			<Tooltip title="Share this" arrow={false}>
-				<Button
-					className="periscope-btn copy-url-btn"
-					onClick={handleShareURL}
-					icon={
-						isURLCopied ? (
-							<Check size={14} color={Color.BG_FOREST_500} />
-						) : (
-							<Share2 size={14} />
-						)
-					}
-				/>
-			</Tooltip>
+			</Row>
 		</div>
 	);
 }

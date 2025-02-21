@@ -42,21 +42,7 @@ export const celeryAllStateWidgetData = (
 					disabled: false,
 					expression: 'A',
 					filters: {
-						items: [
-							{
-								id: uuidv4(),
-								key: {
-									dataType: DataTypes.String,
-									id: 'celery.task_name--string--tag--false',
-									isColumn: false,
-									isJSON: false,
-									key: 'celery.task_name',
-									type: 'tag',
-								},
-								op: '=',
-								value: 'tasks.tasks.divide',
-							},
-						],
+						items: [],
 						op: 'AND',
 					},
 					functions: [],
@@ -113,7 +99,7 @@ export const celeryRetryStateWidgetData = (
 					filters: {
 						items: [
 							{
-								id: '6d97eed3',
+								id: uuidv4(),
 								key: {
 									dataType: DataTypes.String,
 									id: 'celery.state--string--tag--false',
@@ -179,7 +165,7 @@ export const celeryFailedStateWidgetData = (
 					filters: {
 						items: [
 							{
-								id: '5983eae2',
+								id: uuidv4(),
 								key: {
 									dataType: DataTypes.String,
 									id: 'celery.state--string--tag--false',
@@ -245,7 +231,7 @@ export const celerySuccessStateWidgetData = (
 					filters: {
 						items: [
 							{
-								id: '000c5a93',
+								id: uuidv4(),
 								key: {
 									dataType: DataTypes.String,
 									id: 'celery.state--string--tag--false',
@@ -332,6 +318,7 @@ export const celeryTasksByWorkerWidgetData = (
 					timeAggregation: 'rate',
 				},
 			],
+			yAxisUnit: 'cps',
 		}),
 	);
 
@@ -345,44 +332,103 @@ export const celeryErrorByWorkerWidgetData = (
 			description: 'Represents the number of errors by each worker.',
 			queryData: [
 				{
+					dataSource: DataSource.TRACES,
+					queryName: 'A',
+					aggregateOperator: 'count_distinct',
 					aggregateAttribute: {
-						dataType: DataTypes.String,
-						id: '------false',
-						isColumn: false,
+						dataType: 'string',
+						id: 'span_id--string----true',
+						isColumn: true,
 						isJSON: false,
-						key: '',
+						key: 'span_id',
 						type: '',
 					},
-					aggregateOperator: 'rate',
-					dataSource: DataSource.TRACES,
-					disabled: false,
-					expression: 'A',
+					timeAggregation: 'count_distinct',
+					spaceAggregation: 'sum',
+					functions: [],
 					filters: {
-						items: [],
+						items: [
+							{
+								id: uuidv4(),
+								key: {
+									dataType: DataTypes.bool,
+									id: 'has_error--bool----true',
+									isColumn: true,
+									isJSON: false,
+									key: 'has_error',
+									type: '',
+								},
+								op: '=',
+								value: 'true',
+							},
+						],
 						op: 'AND',
 					},
-					functions: [],
+					expression: 'A',
+					disabled: true,
+					stepInterval: getStepInterval(startTime, endTime),
+					having: [],
+					limit: null,
+					orderBy: [],
 					groupBy: [
 						{
 							dataType: DataTypes.String,
-							id: 'celery.hostname--string--tag--false',
 							isColumn: false,
 							isJSON: false,
 							key: 'celery.hostname',
 							type: 'tag',
+							id: 'celery.hostname--string--tag--false',
 						},
 					],
-					having: [],
-					legend: '{{celery.hostname}}',
-					limit: 10,
-					orderBy: [],
-					queryName: 'A',
+					legend: '',
 					reduceTo: 'avg',
-					spaceAggregation: 'sum',
-					stepInterval: getStepInterval(startTime, endTime),
-					timeAggregation: 'rate',
 				},
+				{
+					dataSource: 'traces',
+					queryName: 'B',
+					aggregateOperator: 'count_distinct',
+					aggregateAttribute: {
+						dataType: 'string',
+						id: 'span_id--string----true',
+						isColumn: true,
+						isJSON: false,
+						key: 'span_id',
+						type: '',
+					},
+					timeAggregation: 'count_distinct',
+					spaceAggregation: 'sum',
+					functions: [],
+					filters: {
+						items: [],
+						op: 'AND',
+					},
+					expression: 'B',
+					disabled: true,
+					stepInterval: getStepInterval(startTime, endTime),
+					having: [],
+					limit: null,
+					orderBy: [],
+					groupBy: [
+						{
+							dataType: DataTypes.String,
+							isColumn: false,
+							isJSON: false,
+							key: 'celery.hostname',
+							type: 'tag',
+							id: 'celery.hostname--string--tag--false',
+						},
+					],
+					legend: '',
+					reduceTo: 'avg',
+				},
+				{
+					queryName: 'F1',
+					expression: '(A/B)*100',
+					disabled: false,
+					legend: '{{celery.hostname}}',
+				} as any,
 			],
+			yAxisUnit: 'percent',
 		}),
 	);
 
@@ -392,7 +438,7 @@ export const celeryLatencyByWorkerWidgetData = (
 ): Widgets =>
 	getWidgetQueryBuilder(
 		getWidgetQuery({
-			title: 'Latency by Worker',
+			title: 'Latency by worker',
 			description: 'Represents the latency of tasks by each worker.',
 			queryData: [
 				{
@@ -444,7 +490,7 @@ export const celeryActiveTasksWidgetData = (
 ): Widgets =>
 	getWidgetQueryBuilder(
 		getWidgetQuery({
-			title: 'Tasks/ worker (Active tasks)',
+			title: 'Active Tasks by worker',
 			description: 'Represents the number of active tasks.',
 			queryData: [
 				{
@@ -487,49 +533,7 @@ export const celeryActiveTasksWidgetData = (
 					timeAggregation: 'latest',
 				},
 			],
-		}),
-	);
-
-export const celeryWorkerOnlineWidgetData = (
-	startTime: number,
-	endTime: number,
-): Widgets =>
-	getWidgetQueryBuilder(
-		getWidgetQuery({
-			title: 'Worker Online',
-			description: 'Represents the number of workers online.',
-			panelTypes: PANEL_TYPES.VALUE,
-			queryData: [
-				{
-					aggregateAttribute: {
-						dataType: DataTypes.Float64,
-						id: 'flower_task_runtime_seconds_sum--float64--Sum--true',
-						isColumn: true,
-						isJSON: false,
-						key: 'flower_task_runtime_seconds_sum',
-						type: 'Sum',
-					},
-					aggregateOperator: 'rate',
-					dataSource: DataSource.METRICS,
-					disabled: false,
-					expression: 'A',
-					filters: {
-						items: [],
-						op: 'AND',
-					},
-					functions: [],
-					groupBy: [],
-					having: [],
-					legend: '',
-					limit: null,
-					orderBy: [],
-					queryName: 'A',
-					reduceTo: 'avg',
-					spaceAggregation: 'sum',
-					stepInterval: getStepInterval(startTime, endTime),
-					timeAggregation: 'rate',
-				},
-			],
+			yAxisUnit: 'cps',
 		}),
 	);
 
@@ -584,7 +588,7 @@ export const celeryTaskLatencyWidgetData = (
 					reduceTo: 'avg',
 					spaceAggregation: 'sum',
 					stepInterval: getStepInterval(startTime, endTime),
-					timeAggregation: 'p99',
+					timeAggregation: type || 'p99',
 				},
 			],
 			yAxisUnit: 'ns',
@@ -668,7 +672,7 @@ export const celeryRetryTasksTableWidgetData = getWidgetQueryBuilder(
 				filters: {
 					items: [
 						{
-							id: '9e09c9ed',
+							id: uuidv4(),
 							key: {
 								dataType: DataTypes.String,
 								id: 'celery.state--string--tag--false',
@@ -737,7 +741,7 @@ export const celeryFailedTasksTableWidgetData = getWidgetQueryBuilder(
 				filters: {
 					items: [
 						{
-							id: '2330f906',
+							id: uuidv4(),
 							key: {
 								dataType: DataTypes.String,
 								id: 'celery.state--string--tag--false',
@@ -804,7 +808,7 @@ export const celerySuccessTasksTableWidgetData = getWidgetQueryBuilder(
 				filters: {
 					items: [
 						{
-							id: 'ec3df7b7',
+							id: uuidv4(),
 							key: {
 								dataType: DataTypes.String,
 								id: 'celery.state--string--tag--false',
@@ -917,3 +921,201 @@ export const celeryTimeSeriesTablesWidgetData = (
 			columnUnits: { A: 'ns' },
 		}),
 	);
+
+// State Count Widget
+export const celeryAllStateCountWidgetData = getWidgetQueryBuilder(
+	getWidgetQuery({
+		title: 'All State Count',
+		description: 'Represents the all state count.',
+		panelTypes: PANEL_TYPES.VALUE,
+		queryData: [
+			{
+				aggregateAttribute: {
+					dataType: DataTypes.String,
+					id: 'span_id--string----true',
+					isColumn: true,
+					isJSON: false,
+					key: 'span_id',
+					type: '',
+				},
+				aggregateOperator: 'count_distinct',
+				dataSource: DataSource.TRACES,
+				disabled: false,
+				expression: 'A',
+				filters: {
+					items: [],
+					op: 'AND',
+				},
+				functions: [],
+				groupBy: [],
+				having: [],
+				legend: '',
+				limit: null,
+				orderBy: [],
+				queryName: 'A',
+				reduceTo: 'last',
+				spaceAggregation: 'sum',
+				stepInterval: 60,
+				timeAggregation: 'count_distinct',
+			},
+		],
+	}),
+);
+
+export const celerySuccessStateCountWidgetData = getWidgetQueryBuilder(
+	getWidgetQuery({
+		title: 'Successful State Count',
+		description: 'Represents the successful state count.',
+		panelTypes: PANEL_TYPES.VALUE,
+		queryData: [
+			{
+				aggregateAttribute: {
+					dataType: DataTypes.String,
+					id: 'span_id--string----true',
+					isColumn: true,
+					isJSON: false,
+					key: 'span_id',
+					type: '',
+				},
+				aggregateOperator: 'count_distinct',
+				dataSource: DataSource.TRACES,
+				disabled: false,
+				expression: 'A',
+				filters: {
+					items: [
+						{
+							id: uuidv4(),
+							key: {
+								dataType: DataTypes.String,
+								id: 'celery.state--string--tag--false',
+								isColumn: false,
+								isJSON: false,
+								key: 'celery.state',
+								type: 'tag',
+							},
+							op: '=',
+							value: 'SUCCESS',
+						},
+					],
+					op: 'AND',
+				},
+				functions: [],
+				groupBy: [],
+				having: [],
+				legend: '',
+				limit: null,
+				orderBy: [],
+				queryName: 'A',
+				reduceTo: 'last',
+				spaceAggregation: 'sum',
+				stepInterval: 60,
+				timeAggregation: 'count_distinct',
+			},
+		],
+	}),
+);
+
+export const celeryFailedStateCountWidgetData = getWidgetQueryBuilder(
+	getWidgetQuery({
+		title: 'Failed State Count',
+		description: 'Represents the failed state count.',
+		panelTypes: PANEL_TYPES.VALUE,
+		queryData: [
+			{
+				aggregateAttribute: {
+					dataType: DataTypes.String,
+					id: 'span_id--string----true',
+					isColumn: true,
+					isJSON: false,
+					key: 'span_id',
+					type: '',
+				},
+				aggregateOperator: 'count_distinct',
+				dataSource: DataSource.TRACES,
+				disabled: false,
+				expression: 'A',
+				filters: {
+					items: [
+						{
+							id: uuidv4(),
+							key: {
+								dataType: DataTypes.String,
+								id: 'celery.state--string--tag--false',
+								isColumn: false,
+								isJSON: false,
+								key: 'celery.state',
+								type: 'tag',
+							},
+							op: '=',
+							value: 'FAILURE',
+						},
+					],
+					op: 'AND',
+				},
+				functions: [],
+				groupBy: [],
+				having: [],
+				legend: '',
+				limit: null,
+				orderBy: [],
+				queryName: 'A',
+				reduceTo: 'last',
+				spaceAggregation: 'sum',
+				stepInterval: 60,
+				timeAggregation: 'count_distinct',
+			},
+		],
+	}),
+);
+
+export const celeryRetryStateCountWidgetData = getWidgetQueryBuilder(
+	getWidgetQuery({
+		title: 'Retry State Count',
+		description: 'Represents the retry state count.',
+		panelTypes: PANEL_TYPES.VALUE,
+		queryData: [
+			{
+				aggregateAttribute: {
+					dataType: DataTypes.String,
+					id: 'span_id--string----true',
+					isColumn: true,
+					key: 'span_id',
+					type: '',
+				},
+				aggregateOperator: 'count_distinct',
+				dataSource: DataSource.TRACES,
+				disabled: false,
+				expression: 'A',
+				filters: {
+					items: [
+						{
+							id: uuidv4(),
+							key: {
+								dataType: DataTypes.String,
+								id: 'celery.state--string--tag--false',
+								isColumn: false,
+								isJSON: false,
+								key: 'celery.state',
+								type: 'tag',
+							},
+							op: '=',
+							value: 'RETRY',
+						},
+					],
+					op: 'AND',
+				},
+				functions: [],
+				groupBy: [],
+				having: [],
+				legend: '',
+				limit: null,
+				orderBy: [],
+				queryName: 'A',
+				reduceTo: 'last',
+				spaceAggregation: 'sum',
+				stepInterval: 60,
+				timeAggregation: 'count_distinct',
+			},
+		],
+	}),
+);
