@@ -95,6 +95,7 @@ func (b *resourceFilterStatementBuilder[T]) Build(
 	end uint64,
 	requestType qbtypes.RequestType,
 	query qbtypes.QueryBuilderQuery[T],
+	variables map[string]qbtypes.VariableItem,
 ) (*qbtypes.Statement, error) {
 	config, exists := signalConfigs[b.signal]
 	if !exists {
@@ -135,9 +136,10 @@ func (b *resourceFilterStatementBuilder[T]) addConditions(
 
 		// warnings would be encountered as part of the main condition already
 		filterWhereClause, _, err := querybuilder.PrepareWhereClause(query.Filter.Expression, querybuilder.FilterExprVisitorOpts{
-			FieldMapper:      b.fieldMapper,
-			ConditionBuilder: b.conditionBuilder,
-			FieldKeys:        keys,
+			FieldMapper:        b.fieldMapper,
+			ConditionBuilder:   b.conditionBuilder,
+			FieldKeys:          keys,
+			SkipFullTextFilter: true,
 		})
 
 		if err != nil {

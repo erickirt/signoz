@@ -247,10 +247,10 @@ func (m *defaultFieldMapper) ColumnExpressionFor(
 				correction, found := telemetrytypes.SuggestCorrection(field.Name, maps.Keys(keys))
 				if found {
 					// we found a close match, in the error message send the suggestion
-					return "", errors.Wrapf(err, errors.TypeInvalidInput, errors.CodeInvalidInput, correction)
+					return "", errors.Wrapf(err, errors.TypeInvalidInput, errors.CodeInvalidInput, "%s", correction)
 				} else {
 					// not even a close match, return an error
-					return "", err
+					return "", errors.Wrapf(err, errors.TypeInvalidInput, errors.CodeInvalidInput, "field %s not found", field.Name)
 				}
 			}
 		} else if len(keysForField) == 1 {
@@ -263,7 +263,7 @@ func (m *defaultFieldMapper) ColumnExpressionFor(
 				colName, _ = m.FieldFor(ctx, key)
 				args = append(args, fmt.Sprintf("toString(%s) != '', toString(%s)", colName, colName))
 			}
-			colName = fmt.Sprintf("multiIf(%s)", strings.Join(args, ", "))
+			colName = fmt.Sprintf("multiIf(%s, NULL)", strings.Join(args, ", "))
 		}
 	}
 
